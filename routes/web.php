@@ -12,5 +12,9 @@
 */
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect('http://britzone.id');
 });
+
+//Auth::routes();
+
+Route::get('/home', 'HomeController@index');
