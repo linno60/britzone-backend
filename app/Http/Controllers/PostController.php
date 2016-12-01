@@ -219,9 +219,11 @@ class PostController extends Controller
                     array_push($response, $post[$postKey]);
                 } 
                 
+                /*
                 else {
                     array_push($response, $post[$postKey]);
                 }
+                */
                 
             }
 
