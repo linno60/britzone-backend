@@ -1,6 +1,15 @@
 <?php
 
 use App\Media;
+use App\Mediable;
+use App\Content;
+use App\Post;
+use App\TimeFrame;
+use App\Categorizable;
+use App\Person;
+use App\Participant;
+use App\Attendable;
+
 use Illuminate\Database\Seeder;
 
 class MediaTableSeeder extends Seeder
@@ -12,16 +21,36 @@ class MediaTableSeeder extends Seeder
      */
     public function run()
     {
+
+        include('bite_britzone (1).php');
+
+        Media::insert($media);
+
+        Post::insert($posts);
+
+        Mediable::insert($mediables);
+
+        Content::insert($contents);
+
+        TimeFrame::insert($time_frames);
+
+        Categorizable::insert($categorizables);
+
+        Person::insert($people);
+
+        Participant::insert($participants);
+        /*
         Media::insert([
             [
-                'name'          =>  'a',
-                'description'   =>  'b',
+                'name'          =>  'poster',
+                'description'   =>  'poster',
                 'album_id'      =>  null,
                 'cloud_id'      =>  'a7sdkpputkcjxkuyoftj',
                 'created_at'    =>  new DateTime,
                 'updated_at'    =>  new DateTime,
             ],
 
+            /*
             [
                 'name'          =>  'c',
                 'description'   =>  'd',
@@ -111,6 +140,9 @@ class MediaTableSeeder extends Seeder
                 'created_at'    =>  new DateTime,
                 'updated_at'    =>  new DateTime,
             ],
-        ]);
+            */
+        //]);
+        
+        
     }
 }

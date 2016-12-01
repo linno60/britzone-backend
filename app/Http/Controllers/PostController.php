@@ -218,11 +218,11 @@ class PostController extends Controller
                     //return 'true';
                     array_push($response, $post[$postKey]);
                 } 
-                /*
+                
                 else {
                     array_push($response, $post[$postKey]);
                 }
-                */
+                
             }
 
             $content = $post[$postKey]['content']->content;
