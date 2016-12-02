@@ -13,12 +13,6 @@ use Illuminate\Http\Request;
 |
 */
 
-Route::get('/test', function () {
-
-    //return redirect('http://britzone.id');
-    return response()->json('teset');
-});
-
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:api');
