@@ -12,7 +12,9 @@
 */
 
 Route::get('/', function () {
-    return redirect('http://britzone.id');
+
+    //return redirect('http://britzone.id');
+    return response()->json('teset');
 });
 
 //Auth::routes();
