@@ -118,18 +118,18 @@ class PostController extends Controller
         /* to insert time frame */
         $session = new TimeFrame;
         $session->name = 'start';
-        $timestring = substr($request->input('dateStart'), 0, 10);
-        $timestring .= substr($request->input('timeStart'), 11, 14);
-        $date = date('Y-m-d H:i:s', strtotime($timestring));
+        //$timestring = substr($request->input('dateStart'), 0, 10);
+        //$timestring .= substr($request->input('timeStart'), 11, 14);
+        $date = date('Y-m-d H:i:s', strtotime($request->input('timeStart')));
         $session->value = $date;
         $session->touch();
         $post->session()->save($session);
 
         $session = new TimeFrame;
         $session->name = 'end';
-        $timestring = substr($request->input('dateStart'), 0, 10);
-        $timestring .= substr($request->input('timeEnd'), 11, 14);
-        $date = date('Y-m-d H:i:s', strtotime($timestring));
+        //$timestring = substr($request->input('dateStart'), 0, 10);
+        //$timestring .= substr($request->input('timeEnd'), 11, 14);
+        $date = date('Y-m-d H:i:s', strtotime($request->input('timeEnd')));
         $session->value = $date;
         $session->touch();
         $post->session()->save($session);
@@ -224,6 +224,8 @@ class PostController extends Controller
                     array_push($response, $post[$postKey]);
                 }
                 */
+                
+                
                 
             }
 
