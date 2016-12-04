@@ -15,8 +15,8 @@ class CreateMediaTable extends Migration
     {
         Schema::create('media', function (Blueprint $table) {
             $table->increments('id');
-            $table->string('name');
-            $table->string('description');
+            $table->string('name')->nullable();
+            $table->string('description')->nullable();
             $table->integer('album_id')->unsigned()->nullable();
             $table->foreign('album_id')->references('id')->on('media')->onDelete('cascade');
 

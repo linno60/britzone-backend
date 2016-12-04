@@ -26,18 +26,18 @@ class MediaController extends Controller
 
     public function store(Request $request) {
         
-        
-        
         $media = new Media;
-        $media->name = $request->name;
-        $media->description = $request->description;
+
+        if ($request->name) $media->name = $request->name;
+        if ($request->description) $media->description = $request->description;
 
         $filename = $request->image->path();
-        Cloudder::upload($filename);
 
+        //return response()->json($filename);
+
+        Cloudder::upload($filename);
         $media->cloud_id = Cloudder::getPublicId();
-        
-        
+
         $media->touch();
         $media->save();
 

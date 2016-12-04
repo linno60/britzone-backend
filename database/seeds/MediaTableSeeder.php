@@ -39,6 +39,7 @@ class MediaTableSeeder extends Seeder
         Person::insert($people);
 
         Participant::insert($participants);
+        
         /*
         Media::insert([
             [

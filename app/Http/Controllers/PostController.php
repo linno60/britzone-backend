@@ -105,8 +105,23 @@ class PostController extends Controller
 
 
         /* to insert mediable */
-        $media = Media::find($request->input('media_id'));
-        $post->media()->save($media);
+        $file = $request->input('media');
+        $file = json_decode(json_encode($file), true);
+
+        /* selecting from library */
+        if (!empty($file['id'])) {
+            $media = Media::find($request->input('media')['id']);
+            $post->media()->save($media);
+        }
+
+        /* new upload */
+        if (!empty($request['media']['image'])) {
+            $media = new Media;
+            $filename = $request['media']['image']->path();
+            Cloudder::upload($filename);
+            $media->cloud_id = Cloudder::getPublicId();
+            $post->media()->save($media);
+        }
 
 
         /* to insert post content */
@@ -118,8 +133,6 @@ class PostController extends Controller
         /* to insert time frame */
         $session = new TimeFrame;
         $session->name = 'start';
-        //$timestring = substr($request->input('dateStart'), 0, 10);
-        //$timestring .= substr($request->input('timeStart'), 11, 14);
         $date = date('Y-m-d H:i:s', strtotime($request->input('timeStart')));
         $session->value = $date;
         $session->touch();
@@ -127,8 +140,6 @@ class PostController extends Controller
 
         $session = new TimeFrame;
         $session->name = 'end';
-        //$timestring = substr($request->input('dateStart'), 0, 10);
-        //$timestring .= substr($request->input('timeEnd'), 11, 14);
         $date = date('Y-m-d H:i:s', strtotime($request->input('timeEnd')));
         $session->value = $date;
         $session->touch();
@@ -161,6 +172,19 @@ class PostController extends Controller
         return response()->json($post);
     }
 
+    public function destroy($id) {
+        $post = Post::find($id);
+
+        $post->category()->delete();
+        $post->media()->detach();
+        $post->content()->delete();
+        $post->session()->delete();
+        $post->participants()->detach();
+        
+        $post->delete();
+
+    }
+
     public function currentClass(Request $request) {
 
         //$datetime = urldecode($request->localTime);
@@ -170,6 +194,8 @@ class PostController extends Controller
         $post = Post::with('content', 'user', 'media', 'session')->categorizing()
             ->get();
         
+        //return response()->json($post);
+
         $response = [];
 
         
@@ -219,11 +245,11 @@ class PostController extends Controller
                     array_push($response, $post[$postKey]);
                 } 
                 
-                /*
+                
                 else {
                     array_push($response, $post[$postKey]);
                 }
-                */
+                
                 
                 
                 
@@ -232,20 +258,15 @@ class PostController extends Controller
             $content = $post[$postKey]['content']->content;
             unset($post[$postKey]['content']);
             $post[$postKey]['content'] = $content;
-            
-
-
+           
             $post[$postKey]['image'] = Cloudder::show($post[$postKey]['media'][0]->cloud_id, [
                 'width'     =>  null,
                 'height'    =>  null,
                 'crop'      =>  'scale',
                 'format'    =>  'jpg',
             ]);
-            
-            
-            
-           
-            
+
+
             $category = $post[$postKey]['category'][0];
 
             unset($post[$postKey]['user']);
