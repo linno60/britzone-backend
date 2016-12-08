@@ -184,7 +184,7 @@ return [
         Laravel\Passport\PassportServiceProvider::class,
         JD\Cloudder\CloudderServiceProvider::class,
         Tymon\JWTAuth\Providers\JWTAuthServiceProvider::class,
-
+        Maatwebsite\Excel\ExcelServiceProvider::class,
     ],
 
     /*
@@ -237,6 +237,7 @@ return [
         'Cloudder' => JD\Cloudder\Facades\Cloudder::class,
         'JWTAuth' => Tymon\JWTAuth\Facades\JWTAuth::class,
         'JWTFactory' => Tymon\JWTAuth\Facades\JWTFactory::class,
+        'Excel' => Maatwebsite\Excel\Facades\Excel::class,
 
     ],
 

@@ -22,7 +22,7 @@ class MediaTableSeeder extends Seeder
     public function run()
     {
 
-        include('bite_britzone (1).php');
+        include('bite_britzone (3) - nullable.php');
 
         Media::insert($media);
 

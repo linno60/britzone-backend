@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use DateTime;
 use Illuminate\Http\Request;
 use App\Post;
 use App\Categorizable;
@@ -12,6 +13,7 @@ use App\TimeFrame;
 use App\Media;
 use App\Person;
 use App\Participant;
+use Excel;
 
 class PostController extends Controller
 {
@@ -151,13 +153,18 @@ class PostController extends Controller
     }
 
     public function show($id) {
-        $post = Post::with('content', 'user', 'media')->categorizing()
+        $post = Post::with('content', 'user', 'media', 'participants', 'session')->categorizing()
             ->find($id);
         
         
         $post = json_decode(json_encode($post), true);
         $media = $post['media'][0];
-        $media['url'] = Cloudder::show($media['cloud_id']);
+        $media['url'] = Cloudder::show($media['cloud_id'], [
+                'width'     =>  null,
+                'height'    =>  null,
+                'crop'      =>  'scale',
+                'format'    =>  'jpg',
+        ]);
         unset($post['media']['media']);
         $post['media'] = $media;
 
@@ -168,6 +175,35 @@ class PostController extends Controller
         $category['subcategory'] = $subcategory;
 
         $post['category'] = $category;
+
+
+        $frame = [];
+
+        foreach($post['session'] as $sessionKey => $sessionValue) {
+
+            if ($sessionValue['name'] == 'start') {
+                $frame['start'] = $sessionValue['value'];
+            }
+
+            if ($sessionValue['name'] == 'end') {
+                $frame['end'] = $sessionValue['value'];
+            }
+
+        }
+
+        //return response()->json($frame);
+
+        if (!empty($frame['start']) && !empty($frame['end'])) {
+            $start = strtotime($frame['start']);
+            $end = strtotime($frame['end']);
+            $now = new \DateTime();
+            $now = $now->getTimestamp();
+
+            $frame['now'] = date('Y-m-d H:i:s', $now);
+            $post['frame'] = $frame;
+            
+        }
+
         
         return response()->json($post);
     }
@@ -187,18 +223,10 @@ class PostController extends Controller
 
     public function currentClass(Request $request) {
 
-        //$datetime = urldecode($request->localTime);
-        //$date = date('Y-m-d H:i:s', strtotime($request->localTime));
-        //return response()->json(['local' => $datetime]);
-
         $post = Post::with('content', 'user', 'media', 'session')->categorizing()
             ->get();
         
-        //return response()->json($post);
-
         $response = [];
-
-        
 
         foreach ($post as $postKey => $postValue) {
             if (count($postValue->session) == 0) {
@@ -230,15 +258,6 @@ class PostController extends Controller
                 $frame['now'] = date('Y-m-d H:i:s', $now);
                 $post[$postKey]->frame = $frame;
                 
-                
-
-               /* 
-                return response()->json([
-                    date('Y-m-d H:i:s', $start), 
-                    date('Y-m-d H:i:s', $now), 
-                    date('Y-m-d H:i:s', $end)
-                ]);
-                */
 
                 if ($now >= $start & $now <= $end ) {
                     //return 'true';
@@ -294,6 +313,9 @@ class PostController extends Controller
             $post = Post::with(['participants' => function($query) use ($request) {
                 $query->where('phone', $request->input('auth'))->orWhere('email', $request->input('auth'));
             }])->find($request->input('post_id'));
+
+           // $post->participants()->touch();
+
             if (count($post->participants) > 0) {
 
                 //user already check in
@@ -311,6 +333,14 @@ class PostController extends Controller
                     //existing member checking-in
 
                     $post->participants()->save($member);
+                    $participant = Participant::where('person_id', $member->id)
+                        ->where('participable_id', $post->id)
+                        ->where('participable_type', 'App\Post')
+                        ->first();
+                    $participant->created_at = new DateTime;
+                    $participant->updated_at = new DateTime;
+                    $participant->save();
+
                     return response()->json([
                         'person'    =>  $member->name,
                         'message'   =>  'Welcome again <b>' . $member->name . '</b>. Enjoy the class...',
@@ -340,6 +370,7 @@ class PostController extends Controller
             $post = Post::with(['participants' => function($query) use ($request) {
                 $query->where('phone', $request->input('phone'))->orWhere('email', $request->input('email'));
             }])->find($request->input('post_id'));
+
             if (count($post->participants) > 0) {
 
                 //user already check in
@@ -354,9 +385,16 @@ class PostController extends Controller
                 $member = Person::where('phone', $request->input('phone'))->orWhere('email', $request->input('email'))->first();
                 if ($member) {
                     
-                    //existing member checking-in
-
+       
                     $post->participants()->save($member);
+                    $participant = Participant::where('person_id', $member->id)
+                        ->where('participable_id', $post->id)
+                        ->where('participable_type', 'App\Post')
+                        ->first();
+                    $participant->created_at = new DateTime;
+                    $participant->updated_at = new DateTime;
+                    $participant->save();
+
                     return response()->json([
                         'person'    =>  $member->name,
                         'message'   =>  'Welcome again <b>' . $member->name . '</b>. Enjoy the class...',
@@ -372,7 +410,15 @@ class PostController extends Controller
                     $person->phone = $request->input('phone');
                     $person->email = $request->input('email');
                     $person->touch();
+
                     $post->participants()->save($person);
+                    $participant = Participant::where('person_id', $person->id)
+                        ->where('participable_id', $post->id)
+                        ->where('participable_type', 'App\Post')
+                        ->first();
+                    $participant->created_at = new DateTime;
+                    $participant->updated_at = new DateTime;
+                    $participant->save();
 
                     return response()->json([
                         'person'    =>  $person->name,
@@ -384,7 +430,28 @@ class PostController extends Controller
                 return response()->json($post);
             }
         
-            return response()->json('cacad');
         }
+    }
+
+    public function downloadParticipants($id) {
+
+        
+        $participants = Post::with('participants')->find($id);
+        //return response()->json($participants);
+        $participants = $participants->participants;
+
+        Excel::create('participants', function($excel) use ($participants) {
+
+            $excel->sheet('participants', function($sheet) use ($participants) {
+                $sheet->fromArray($participants);
+                
+            });
+
+        })->download('xlsx');
+
+     
+
+        //return response($response);
+        
     }
 }
