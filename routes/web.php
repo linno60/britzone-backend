@@ -18,5 +18,7 @@ Route::get('/', function () {
 });
 
 //Auth::routes();
+Route::get('/api/post/{id}/download/participants', 'PostController@downloadParticipants');
+    
 
 Route::get('/home', 'HomeController@index');
