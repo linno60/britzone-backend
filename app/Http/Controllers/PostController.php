@@ -433,9 +433,9 @@ class PostController extends Controller
         }
     }
 
-    public function downloadParticipants($id) {
+    public function downloadParticipants() {
 
-        
+        $id = 1;
         $participants = Post::with('participants')->find($id);
         //return response()->json($participants);
         $participants = $participants->participants;
