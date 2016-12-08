@@ -1,5 +1,8 @@
 <?php
 
+use App\Post;
+use Maatwebsite\Excel\Facades\Excel;
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -18,7 +21,22 @@ Route::get('/', function () {
 });
 
 //Auth::routes();
-Route::get('/download', 'PostController@downloadParticipants');
+Route::get('/download', function() {
+
+        $id = 1;
+        $participants = Post::with('participants')->find($id);
+        //return response()->json($participants);
+        $participants = $participants->participants;
+
+        Excel::create('participants', function($excel) use ($participants) {
+
+            $excel->sheet('participants', function($sheet) use ($participants) {
+                $sheet->fromArray($participants);
+                
+            });
+
+        })->download('xlsx');
+});
     
 
 Route::get('/home', 'HomeController@index');
