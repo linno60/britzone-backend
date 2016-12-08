@@ -433,25 +433,4 @@ class PostController extends Controller
         }
     }
 
-    public function downloadParticipants() {
-
-        $id = 1;
-        $participants = Post::with('participants')->find($id);
-        //return response()->json($participants);
-        $participants = $participants->participants;
-
-        Excel::create('participants', function($excel) use ($participants) {
-
-            $excel->sheet('participants', function($sheet) use ($participants) {
-                $sheet->fromArray($participants);
-                
-            });
-
-        })->download('xlsx');
-
-     
-
-        //return response($response);
-        
-    }
 }

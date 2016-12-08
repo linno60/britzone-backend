@@ -21,9 +21,6 @@ Route::get('/user', function (Request $request) {
 Route::get('login', 'Auth\LoginController@index');
 Route::post('login', 'Auth\LoginController@login');
 
-Route::get('post/{id}/download/participants', 'PostController@downloadParticipants');
-    
-
 Route::group(['middleware' => ['jwt.auth']], function() {
 
 
