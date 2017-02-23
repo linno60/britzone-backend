@@ -15,6 +15,8 @@ class AlterPeopleTable extends Migration
     {
         Schema::table('people', function($table) {
             $table->date('born_date')->nullable()->default(null)->change();
+            $table->char('gender')->nullable()->default(null);
+            $table->char('marital')->nullable()->default(null);
         });
     }
 

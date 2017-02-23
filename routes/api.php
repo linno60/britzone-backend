@@ -41,4 +41,5 @@ Route::group(['middleware' => ['jwt.auth']], function() {
 
     Route::resource('person', 'PersonController');
 
+    Route::resource('user', 'UserController');
 });

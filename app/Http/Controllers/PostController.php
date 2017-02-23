@@ -71,6 +71,7 @@ class PostController extends Controller
             
             ->with('content', 'user')
             ->where('name', 'LIKE', '%' . $request->keyword . '%')
+            ->orderBy('created_at', 'desc')
             ->paginate($request->display);
         //$this->truncateCategory($post);
         //$this->truncateContent($post);
@@ -87,6 +88,10 @@ class PostController extends Controller
                 content
             }
         */
+
+         //return response()->json($request->all());
+
+
         $post = new Post;
         $post->name = $request->input('name');
         $post->status = $request->input('status');
@@ -158,15 +163,20 @@ class PostController extends Controller
         
         
         $post = json_decode(json_encode($post), true);
-        $media = $post['media'][0];
-        $media['url'] = Cloudder::show($media['cloud_id'], [
-                'width'     =>  null,
-                'height'    =>  null,
-                'crop'      =>  'scale',
-                'format'    =>  'jpg',
-        ]);
-        unset($post['media']['media']);
-        $post['media'] = $media;
+
+        /* check if post have media attached */
+        if (!empty($post['media'][0])) {
+            $media = $post['media'][0];
+            $media['url'] = Cloudder::show($media['cloud_id'], [
+                    'width'     =>  null,
+                    'height'    =>  null,
+                    'crop'      =>  'scale',
+                    'format'    =>  'jpg',
+            ]);
+            unset($post['media']['media']);
+            $post['media'] = $media;
+        }
+        
 
         $post['content'] = $post['content']['content'];
         $category = $post['category'][0];
@@ -206,6 +216,86 @@ class PostController extends Controller
 
         
         return response()->json($post);
+    }
+
+    public function update(Request $request, $id) {
+
+        //return response()->json($request['media']['id']);
+
+        $post = Post::with('content', 'session')->categorizing()->find($id);
+        
+        //return response()->json($post);
+
+        $post->name = $request->input('name');
+        $post->status = $request->input('status');
+        $post->user_id = 1;
+        $post->touch();
+        
+        /* update content */
+        $content = Content::find($post->content->id);
+        $content->content = $request->input('content');
+        $content->touch();        
+        $post->content()->save($content);
+
+        /* update time frame */
+        foreach($request->session as $session) {
+            if ($session['name'] == 'start') {
+                $sessionFrame = TimeFrame::find($session['id']);
+                $date = date('Y-m-d H:i:s', strtotime($request->input('timeStart')));
+                $sessionFrame->value = $date;
+                $sessionFrame->touch();
+                $post->session()->save($sessionFrame);
+            }
+
+            if ($session['name'] == 'end') {
+                $sessionFrame = TimeFrame::find($session['id']);
+                $date = date('Y-m-d H:i:s', strtotime($request->input('timeEnd')));
+                $sessionFrame->value = $date;
+                $sessionFrame->touch();
+                $post->session()->save($sessionFrame);
+            }
+        }
+        
+        /* get post category */
+        $categorized = Categorizable::where('categorizable_id', $id)
+                        ->where('categorizable_type', 'App\Post')->first();
+        
+        /* update post subcategory */
+        $subcategorized = Categorizable::where('categorizable_id', $categorized->id)
+                        ->where('categorizable_type', 'App\Categorizable')->first();
+        $subcategorized->category_id = $request->input('subcategory_id');
+        $subcategorized->touch();
+        $categorized->categorizables()->save($subcategorized);
+
+
+        /* to insert mediable */
+        $file = $request->input('media');
+        $file = json_decode(json_encode($file), true);
+
+        /* selecting from library */
+        if (!empty($request['media']['id'])) {
+            $media = Media::find($request['media']['id']);
+            $post->media()->detach();       //remove existing relationship
+            $post->media()->save($media);   //remove existing relationship
+        }
+
+        /* new upload */
+        if (!empty($request['media']['image'])) {
+            $media = new Media;
+            $filename = $request['media']['image']->path();
+            Cloudder::upload($filename);
+            $media->cloud_id = Cloudder::getPublicId();
+            $post->media()->detach();       //remove existing relationship
+            $post->media()->save($media);   //remove existing relationship
+        }
+
+        
+        
+
+        return response()->json($post);
+
+
+       
     }
 
     public function destroy($id) {
@@ -278,6 +368,7 @@ class PostController extends Controller
             unset($post[$postKey]['content']);
             $post[$postKey]['content'] = $content;
            
+            if ($post[$postKey]['image'])
             $post[$postKey]['image'] = Cloudder::show($post[$postKey]['media'][0]->cloud_id, [
                 'width'     =>  null,
                 'height'    =>  null,
@@ -306,6 +397,36 @@ class PostController extends Controller
 
     public function participate(Request $request) {
 
+        function user_already_register() {
+
+        };
+
+        function check_membership( $auth1, $auth2 ) {
+            return Person::where('phone', $auth1)->orWhere('email', $auth2)->first();
+        }
+
+        function existing_member_check_in($post, $member) {
+            $post->participants()->save($member);
+            $participant = Participant::where('person_id', $member->id)
+                ->where('participable_id', $post->id)
+                ->where('participable_type', 'App\Post')
+                ->first();
+            $participant->created_at = new DateTime;
+            $participant->updated_at = new DateTime;
+            $participant->save();
+        }
+
+        function completing_member_data($member) {
+            $missing_data = [];
+
+            if (empty($member->born_date)) array_push($missing_data, 'born_date');
+            if (empty($member->gender)) array_push($missing_data, 'gender');
+            if (empty($member->marital)) array_push($missing_data, 'marital');
+            if (empty($member->company)) array_push($missing_data, 'company');
+
+            return $missing_data;
+        }
+
         // old member
         if ($request->input('auth')) {
 
@@ -321,29 +442,23 @@ class PostController extends Controller
                 //user already check in
                 return response()->json([
                     'person'    =>  $post->participants[0]->name,
+                    'person_id' =>  $post->participants[0]->id,
                     'message'   =>  'Hello <b>' . $post->participants[0]->name . '</b>, you\'ve already check in for this meeting, please contact any PIC if you need some helps.',
                 ]);
 
             } else {
                 
                 // check if user already register
-                $member = Person::where('phone', $request->input('auth'))->orWhere('email', $request->input('auth'))->first();
+                $member = check_membership($request->input('auth'), $request->input('auth'));
                 if ($member) {
-                    
                     //existing member checking-in
-
-                    $post->participants()->save($member);
-                    $participant = Participant::where('person_id', $member->id)
-                        ->where('participable_id', $post->id)
-                        ->where('participable_type', 'App\Post')
-                        ->first();
-                    $participant->created_at = new DateTime;
-                    $participant->updated_at = new DateTime;
-                    $participant->save();
+                    existing_member_check_in($post, $member);
 
                     return response()->json([
                         'person'    =>  $member->name,
+                        'person_id' =>  $member->id,
                         'message'   =>  'Welcome again <b>' . $member->name . '</b>. Enjoy the class...',
+                        'fields'    => completing_member_data($member),
                     ]);
 
                 } else {
@@ -376,29 +491,25 @@ class PostController extends Controller
                 //user already check in
                 return response()->json([
                     'person'    =>  $post->participants[0]->name,
+                    'person_id' =>  $post->participants[0]->id,
                     'message'   =>  'Hello <b>' . $post->participants[0]->name . '</b>, you\'ve already check in for this meeting, please contact any PIC if you need some helps.',
                 ]);
 
             } else {
                 
                 // check if user already register
-                $member = Person::where('phone', $request->input('phone'))->orWhere('email', $request->input('email'))->first();
+                $member = check_membership($request->input('phone'), $request->input('email'));
                 if ($member) {
-                    
-       
-                    $post->participants()->save($member);
-                    $participant = Participant::where('person_id', $member->id)
-                        ->where('participable_id', $post->id)
-                        ->where('participable_type', 'App\Post')
-                        ->first();
-                    $participant->created_at = new DateTime;
-                    $participant->updated_at = new DateTime;
-                    $participant->save();
+                    //existing member checking-in
+                    existing_member_check_in($post, $member);
 
                     return response()->json([
                         'person'    =>  $member->name,
+                        'person_id' =>  $member->id,
                         'message'   =>  'Welcome again <b>' . $member->name . '</b>. Enjoy the class...',
+                        'fields'    => completing_member_data($member),
                     ]);
+
                 } else {
 
                     $person = new Person;
@@ -409,16 +520,12 @@ class PostController extends Controller
                     $person->address = '';
                     $person->phone = $request->input('phone');
                     $person->email = $request->input('email');
+                    $person->gender = (!empty($request->input('gender'))) ? $request->input('gender') : null;
+                    $person->marital = (!empty($request->input('marital'))) ? $request->input('marital') : null;
+                    
                     $person->touch();
 
-                    $post->participants()->save($person);
-                    $participant = Participant::where('person_id', $person->id)
-                        ->where('participable_id', $post->id)
-                        ->where('participable_type', 'App\Post')
-                        ->first();
-                    $participant->created_at = new DateTime;
-                    $participant->updated_at = new DateTime;
-                    $participant->save();
+                    existing_member_check_in($post, $person);
 
                     return response()->json([
                         'person'    =>  $person->name,

@@ -185,6 +185,7 @@ return [
         JD\Cloudder\CloudderServiceProvider::class,
         Tymon\JWTAuth\Providers\JWTAuthServiceProvider::class,
         Maatwebsite\Excel\ExcelServiceProvider::class,
+        Laravel\Socialite\SocialiteServiceProvider::class,
     ],
 
     /*
@@ -238,6 +239,8 @@ return [
         'JWTAuth' => Tymon\JWTAuth\Facades\JWTAuth::class,
         'JWTFactory' => Tymon\JWTAuth\Facades\JWTFactory::class,
         'Excel' => Maatwebsite\Excel\Facades\Excel::class,
+        'Socialite' => Laravel\Socialite\Facades\Socialite::class,
+        
 
     ],
 

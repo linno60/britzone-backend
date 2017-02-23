@@ -9,8 +9,10 @@ class Media extends Model
 {
     use SoftDeletes;
 
+    //protected $with = ['posts'];
+
     public function posts() {
-        return $this->morphByMany('App\Post', 'mediable');
+        return $this->morphedByMany('App\Post', 'mediable');
     }
 
     

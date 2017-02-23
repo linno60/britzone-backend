@@ -78,7 +78,7 @@ class CategoryController extends Controller
 
     public function children($id) {
 
-        $category = Category::where('category_id', $id)->get();
+        $category = Category::with('attendable')->where('category_id', $id)->get();
         return response()->json($category);
         
     }
