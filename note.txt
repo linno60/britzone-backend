@@ -1,3 +1,7 @@
+[-][March, 29th 2017] - Improvement at PostController.php avoiding upload redundancy
+    - method uploadParticipants
+        - function insert_new_participant
+        - insert_new_person
 [+][February, 23 2017] - Regroup Functionality for PostController on participate()
 [+][February, 23 2017] - Message For unfulfilled Field
 [-][February, 23 2017] - Input attendence list and migrate to live server

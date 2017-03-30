@@ -41,6 +41,56 @@ class PostController extends Controller
 
     public function index(Request $request) {
 
+        function post_timeframing($post) {
+            $frame = [];
+
+            foreach($post['session'] as $sessionKey => $sessionValue) {
+
+                if ($sessionValue['name'] == 'start') {
+                    $frame['start'] = $sessionValue['value'];
+                    $frame['start'] = new \DateTime($frame['start']);
+                    $frame['start'] = $frame['start']->format('D, M j, Y');
+                }
+
+                if ($sessionValue['name'] == 'end') {
+                    $frame['end'] = $sessionValue['value'];
+                    $frame['end'] = new \DateTime($frame['end']);
+                    $frame['end'] = $frame['end']->format('D, M j, Y');
+                }
+
+                
+
+            }
+
+            //return response()->json($frame);
+
+            if (!empty($frame['start']) && !empty($frame['end'])) {
+                $start = strtotime($frame['start']);
+                $end = strtotime($frame['end']);
+                $now = new \DateTime();
+                $now = $now->getTimestamp();
+
+                $frame['now'] = date('Y-m-d H:i:s', $now);
+                $post['frame'] = $frame;
+                
+            }
+
+            
+        }
+
+        function accumulate_participants($posts) {
+
+            foreach($posts as $key=>$value) {
+                $total_participants = count($value->participants);    
+                unset($posts[$key]['participants']);
+                $posts[$key]['total_participants'] = $total_participants;
+                post_timeframing($posts[$key]);
+                unset($posts[$key]['session']);
+            }
+        }
+
+        
+
         //return response()->json(['date' => new \DateTime()]);
         $post = Post::with(
             ['category' => 
@@ -72,9 +122,12 @@ class PostController extends Controller
             ->with('content', 'user')
             ->where('name', 'LIKE', '%' . $request->keyword . '%')
             ->orderBy('created_at', 'desc')
+            ->with('participants', 'session')->categorizing()
             ->paginate($request->display);
         //$this->truncateCategory($post);
         //$this->truncateContent($post);
+        accumulate_participants($post);
+
         return response()->json($post);
     }
 
@@ -538,6 +591,73 @@ class PostController extends Controller
             }
         
         }
+    }
+
+    public function uploadParticipants(Request $request, $post_id) {
+
+        function clearing_null_value($response) {
+            foreach ($response as $key => $value) {
+                if (!$value->name) {
+                    unset($response[$key]);
+                }
+            }
+        }
+
+        function insert_new_participant($person_id, $post_id) {
+
+            //need check if already in database
+            $participant = new Participant;
+            $participant->person_id = $person_id;
+            $participant->participable_id = $post_id;
+            $participant->participable_type = 'App\Post';
+            $participant->save();
+            
+            
+        }
+
+        function insert_new_person($participant, $post_id) {
+
+            //need check if already in participant list
+            $person = new Person;
+            $person->name = $participant->name;
+            $person->phone = $participant->phone;
+            $person->email = $participant->email;
+            $person->job = ($participant->job) ? $participant->job : '';
+            $person->address = '';
+            $person->touch();
+            $person->save();
+
+            return $person->id;
+        }
+
+        function checking_phone_and_email($participants, $post_id) {
+            foreach($participants as $key => $value) {
+                $people = Person::where('phone', '=', $value->phone)->orWhere('email', '=', $value->email)->first();
+
+                if (count($people) > 0) {
+                    insert_new_participant($people->id, $post_id);
+                } else {
+                    $person_id = insert_new_person($participants[$key], $post_id);
+                    insert_new_participant($person_id, $post_id);
+                }
+            }
+        }
+
+    
+        $filename = $request->file->path();
+        $response = Excel::load($filename, function($reader) {
+            $result = $reader->get();
+            return $result;
+        })->parsed;
+        
+        clearing_null_value($response);
+
+        checking_phone_and_email($response, $post_id);
+
+        $post = Post::with('participants')->find($post_id);
+
+        return response()->json($post->participants);
+        
     }
 
 }

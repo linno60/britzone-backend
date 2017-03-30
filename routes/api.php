@@ -36,6 +36,7 @@ Route::group(['middleware' => ['jwt.auth']], function() {
 
     Route::get('post/currentClass', 'PostController@currentClass');
     Route::post('post/participate', 'PostController@participate');
+    Route::post('post/uploadParticipants/{id}', 'PostController@uploadParticipants');
     //Route::get('post/{id}/download/participants', 'PostController@downloadParticipants');
     Route::resource('post', 'PostController');
 
